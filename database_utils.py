@@ -1,33 +1,37 @@
 import yaml
+import pandas as pd
 from sqlalchemy import create_engine
-from sqlalchemy import inspect
 
 
 class DatabaseConnector:
     # A class for connecting and uploading data to a database.
-    
+
+    def __init__(self):
+        # Initialising attributes - assignment is performed through
+        # calling subsequent methods.
+        self.cred_dict = None
+        self.engine = None
+
     def read_db_creds(self):
         # Returns the file ""db_creds.yaml"" as a python dictionary.
         with open('db_creds.yaml', 'r') as cred_file:
             cred_dict = yaml.safe_load(cred_file)
-        return cred_dict
+        self.cred_dict = cred_dict
     
-    def init_db_engine(self, cred_dict:dict):
+    def init_db_engine(self):
         # Reads a python dictionary and initialises and returns
         # an sqlalchemy database engine.
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
-        HOST = cred_dict["RDS_HOST"]
-        USER = cred_dict["RDS_USER"]
-        PASSWORD = cred_dict["RDS_PASSWORD"]
-        DATABASE = cred_dict["RDS_DATABASE"]
-        PORT = cred_dict["RDS_PORT"]
+        HOST = self.cred_dict["RDS_HOST"]
+        USER = self.cred_dict["RDS_USER"]
+        PASSWORD = self.cred_dict["RDS_PASSWORD"]
+        DATABASE = self.cred_dict["RDS_DATABASE"]
+        PORT = self.cred_dict["RDS_PORT"]
         engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}" + \
                                f":{PASSWORD}@{HOST}:{PORT}/{DATABASE}")
+        self.engine = engine
         return engine
     
-Connector1 = DatabaseConnector()
-db_creds = Connector1.read_db_creds()
-engine = Connector1.init_db_engine(db_creds)
-
-
+    def upload_to_db(self, df, table_name):
+        df.to_sql(f"{table_name}", self.engine)

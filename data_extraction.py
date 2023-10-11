@@ -17,7 +17,7 @@ class DataExtractor:
     def read_rds_table(self, table_name):
         with self.engine.connect() as connection:
             table_data = connection.execute(text(f"SELECT * FROM {table_name}"))
-        table_df = pd.DataFrame(table_data, index=False)
+        table_df = pd.DataFrame(table_data)
         return table_df
 
 
