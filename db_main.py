@@ -1,28 +1,30 @@
 from database_utils import DatabaseConnector
 from data_extraction import DataExtractor
 from data_cleaning import DataCleaning
-from sqlalchemy import text
-import yaml
-import pandas as pd
 
 
-Connector1 = DatabaseConnector()
-Cleaner1 = DataCleaning()
+# Initialise connector classes for the old (RDS) and new
+# (PGAdmin4) databases.
+Connector_RDS = DatabaseConnector("db_creds_rds.yaml")
+Connector_PG4 = DatabaseConnector("db_creds_pg4.yaml")
 
-Connector1.read_db_creds()
-engine = Connector1.init_db_engine()
+# Read database credentials and initialise sqlalchemy engines
+# for both connector classes.
+Connector_RDS.read_db_creds()
+Connector_PG4.read_db_creds()
+engine_rds = Connector_RDS.init_db_engine()
+engine_pg4 = Connector_PG4.init_db_engine()
 
-Extractor1 = DataExtractor(engine)
+# Initialise RDS data extractor class with previously-created
+# RDS engine. List RDS data tables. Read selected RDS table
+# into variable.
+Extractor_RDS = DataExtractor(engine_rds)
+Extractor_RDS.list_db_tables()
+legacy_user_data = Extractor_RDS.read_rds_table("legacy_users")
 
-Extractor1.list_db_tables()
+# Initialise data cleaner class and call a method to clean user data.
+Cleaner = DataCleaning()
+legacy_user_data = Cleaner.clean_user_data(legacy_user_data)
 
-#legacy_user_data = Extractor1.read_rds_table("legacy_users")
-table_name = "legacy_users"
-
-legacy_user_data = Extractor1.read_rds_table("legacy_users")
-
-legacy_user_data = Cleaner1.clean_user_data(legacy_user_data)
-
-print(legacy_user_data)
-
-Connector1.upload_to_db(legacy_user_data,"dim_users")
+# Upload cleaned data to new database. 
+Connector_PG4.upload_to_db(legacy_user_data,"dim_users")
