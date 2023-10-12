@@ -11,15 +11,14 @@ class DatabaseConnector:
         # and 'self.engine' is performed through
         # calling subsequent methods.
         self.cred_dict_path = cred_dict_path
-        self.cred_dict = None
+        self.cred_dict = self.read_db_creds()
         self.engine = None
 
     def read_db_creds(self):
         # Returns the file ""db_creds.yaml"" as a python dictionary.
         with open(f'{self.cred_dict_path}', 'r') as cred_file:
             cred_dict = yaml.safe_load(cred_file)
-        self.cred_dict = cred_dict
-    
+            return cred_dict
     def init_db_engine(self):
         # Reads a python dictionary and initialises and returns
         # an sqlalchemy database engine.

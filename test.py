@@ -1,38 +1,39 @@
 from data_extraction import DataExtractor
 from data_cleaning import DataCleaning
+from database_utils import DatabaseConnector
 import pandas as pd
 import numpy as np
 
-legacy_user_data = pd.read_csv("legacy_user_data.csv")
+#Connector_RDS = DatabaseConnector("db_creds_rds.yaml")
+#engine = Connector_RDS.init_db_engine()
+#Extractor = DataExtractor(engine)
 
-# Converting all datatype based on pandas defaults:
-legacy_user_data.set_index("index", inplace=True)
-legacy_user_data = legacy_user_data.convert_dtypes()
-# Converting date of birth and join date to datetime format:
-legacy_user_data.date_of_birth = pd.to_datetime(legacy_user_data.date_of_birth,
-                                                format="mixed",
-                                                errors="coerce")
-legacy_user_data.join_date = pd.to_datetime(legacy_user_data.join_date,
-                                            format="mixed",
-                                            errors="coerce")
-# Dropping rows with null values - both previously existing and those generated
-# by to_datetime where no date format was found:
-legacy_user_data.dropna(inplace=True)
-# Replacing mistyped country code from GGB to GB:
-legacy_user_data["country_code"].replace({"GGB":"GB"}, inplace=True)
-# Filtering out rows with user age outside of reasonable range (there aren't any removed
-# in this case). min_user_age and max_user_age can be adjusted as desired:
-now = pd.Timestamp.now()
-min_user_age = np.timedelta64(16, "Y")
-max_user_age = np.timedelta64(120, "Y")
-legacy_user_data = legacy_user_data[(legacy_user_data.date_of_birth + min_user_age < now) 
-                                        | (legacy_user_data.date_of_birth + max_user_age > now)]
-# Filtering out rows where join date is in the future or join date is earlier than date of birth.
-legacy_user_data = legacy_user_data[(legacy_user_data.join_date < now)
-                                        & (legacy_user_data.join_date > legacy_user_data.date_of_birth)]
-# Filtering out rows where user_uuid is in an invalid format (there are none in this case).
-legacy_user_data = legacy_user_data[legacy_user_data.user_uuid.str.match(
-                                    "^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$")]
+#pdf_path = "https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf"
+#pdf_data = Extractor.retrieve_pdf_data(pdf_path)
 
-print(legacy_user_data)
+card_data = pd.read_csv("card_data.csv", index_col=0)
+
+# Remove rows where the card number has any non-digit character:
+card_data = card_data[card_data.card_number.str.match("\D") == False] 
+
+# Change column data to appropriate types:
+card_data.card_number = card_data.card_number.astype("int64", errors="raise")
+card_data.expiry_date = pd.to_datetime(card_data.expiry_date,
+                                       format="%m/%y",
+                                       errors="raise",)
+card_data.card_provider = card_data.card_provider.astype("string")
+card_data.date_payment_confirmed = pd.to_datetime(card_data.date_payment_confirmed,
+                                                  format="mixed",
+                                                  errors="raise")
+
+#print(card_data[card_data.expiry_date < card_data.date_payment_confirmed])
+#print(card_data.info())
+
+card_data.card_number = card_data.card_number.astype("string")
+
+test_data = card_data[card_data.card_provider.str.contains("16 digit")]
+
+bad_numbers = test_data.card_number[test_data.card_number.str.match("\d{16}") == False]
+print(bad_numbers)
+
 
