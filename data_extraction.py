@@ -25,10 +25,9 @@ class DataExtractor:
     
     def retrieve_pdf_data(self, pdf_path):
         """Return a pdf as a pandas DataFrame."""
-        pdf_data = read_pdf(pdf_path,
-                            pages="all")
+        pdf_data = read_pdf(pdf_path, pages="all")
         data = pd.concat(pdf_data)
-        return data
+        return data 
 
 
 

@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+import yaml
 
 
 class DataCleaning:
@@ -40,3 +41,60 @@ class DataCleaning:
         user_df = user_df[user_df.user_uuid.str.match(
                           "^\w{8}-\w{4}-\w{4}-\w{4}-\w{12}$")]
         return user_df
+    
+    def __card_number_length_check(self, card_data):
+        """Drop rows with incorrect card number lengths."""
+        # Load dictionary relating card lengths to providers:
+        with open("parameters/number_lengths.yaml", "r") as file:
+            number_lengths = dict(yaml.safe_load(file))
+        # Initialise list:
+        invalid_numbers = []
+
+        # Create a list of series of card numbers of invalid length:
+        # Create two boolean masks per iteration:
+        #  - 'provider_mask' is true when the card provider matches the 
+        # loop iteration's current card number length. 
+        #  - 'incorrect_length_mask' is true when the length of the card number
+        #  does not match the iteration's current card number length.  
+        # Create a new series of card numbers where both these masks are true.
+        # Append this series to the list of series 'invalid_numbers' each iteration.  
+        for card_length in number_lengths.keys():
+            provider_mask = card_data.card_provider.isin(number_lengths[card_length])
+            incorrect_length_mask = ~card_data.card_number.str.match(f"^\d{card_length}$")                     
+            invalid_numbers.append(card_data.card_number[provider_mask & incorrect_length_mask])
+
+        # Concatenate the list of series into one series:
+        invalid_numbers = pd.concat(invalid_numbers)
+        # Convert the series to a python list:
+        invalid_numbers = invalid_numbers.tolist()
+        # Drop rows where card numbers are invalid:
+        card_data = card_data[~card_data.card_number.isin(invalid_numbers)]
+        return(card_data)
+
+    def __card_data_reformat(self, card_data):
+        """Change card data dataframe columns to appropriate data types."""
+        card_data.card_number = card_data.card_number.astype("int64", errors="raise")
+        card_data.expiry_date = pd.to_datetime(card_data.expiry_date,
+                                       format="%m/%y",
+                                       errors="raise",)
+        card_data.card_provider = card_data.card_provider.astype("string")
+        card_data.date_payment_confirmed = pd.to_datetime(card_data.date_payment_confirmed,
+                                                  format="mixed",
+                                                  errors="raise")
+        return(card_data)
+    
+    def clean_card_data(self, card_data):
+        """Clean card data."""
+        # Drop rows with null values:
+        card_data.dropna(inplace=True)
+        # Remove rows where the card number has any non-digit character:
+        card_data.card_number = card_data.card_number.astype("string")
+        card_data = card_data[card_data.card_number.str.match("^\d+$")] 
+        # Drop rows with invalid card number lengths:
+        card_data = self.__card_number_length_check(card_data)
+        # Change columns to appropriate data types:
+        card_data = self.__card_data_reformat(card_data)
+        # Correct index:
+        card_data.reset_index(inplace=True, drop=True)
+        card_data.index.rename("Index", inplace=True)
+        return (card_data)

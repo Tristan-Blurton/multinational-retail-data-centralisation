@@ -1,0 +1,16 @@
+---
+"{13}":
+  - VISA 13 digit
+"{15}":
+  - JCB 15 digit
+  - American Express
+"{16}":
+  - Visa 16 digit
+  - JCB 16 digit
+  - Diners Club / Carte Blanche
+  - Maestro
+  - Discover
+  - Mastercard
+"{19}":
+  - VISA 19 digit
+...
