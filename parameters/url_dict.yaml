@@ -1,0 +1,2 @@
+retrieve-store: https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/store_details/
+number-stores: https://aqj7u5id95.execute-api.eu-west-1.amazonaws.com/prod/number_stores

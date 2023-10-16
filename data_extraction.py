@@ -1,3 +1,6 @@
+import requests
+import yaml
+import json
 import pandas as pd
 from sqlalchemy import inspect, text
 from tabula import read_pdf
@@ -29,5 +32,34 @@ class DataExtractor:
         data = pd.concat(pdf_data)
         return data 
 
+    def __open_api_info(self):
+        """Open header and url dictionaries"""
+        header_dict_path = "parameters/headers_dict.yaml"
+        url_dict_path = "parameters/url_dict.yaml"
+        with open(header_dict_path, "r") as file1,\
+             open(url_dict_path, "r") as file2:
+            header_dict = yaml.safe_load(file1)
+            url_dict = yaml.safe_load(file2)
+        return(header_dict, url_dict)
 
-
+    def list_number_of_stores(self):
+        """List the number of stores in the business."""
+        header_dict, url_dict = self.__open_api_info()
+        number_stores = requests.get(url_dict["number-stores"],
+                                     headers=header_dict)
+        number_stores = eval(number_stores.text)
+        return(number_stores["number_stores"])
+    
+    def retrieve_stores_data(self, store_number):
+        """Retrieve dataframe of information on stores."""
+        store_data = []
+        header_dict, url_dict = self.__open_api_info()
+        for num in range(store_number):
+            loop_data = requests.get(f"{url_dict['retrieve-store']}{num}",
+                                  headers=header_dict)
+            loop_data = json.loads(loop_data.text)
+            store_data.append(loop_data)
+        
+        store_data = pd.DataFrame(store_data)
+        store_data.set_index("index", inplace=True)
+        return(store_data)
