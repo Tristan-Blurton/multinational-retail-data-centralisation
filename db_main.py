@@ -19,20 +19,18 @@ engine_pg4 = Connector_PG4.init_db_engine()
 # RDS engine. List RDS data tables. Read selected RDS table
 # into variable.
 Extractor_RDS = DataExtractor(engine_rds)
-Extractor_RDS.list_db_tables()
+##Extractor_RDS.list_db_tables()
 ## legacy_user_data = Extractor_RDS.read_rds_table("legacy_users")
 
 # Initialise data cleaner class and call a method to clean user data.
 Cleaner = DataCleaning()
-## legacy_user_data = Cleaner.clean_user_data(legacy_user_data)
 
-# Upload cleaned data to new database. 
-## Connector_PG4.upload_to_db(legacy_user_data,"dim_users")
+## store_data = Extractor_RDS.retrieve_stores_data(451)
+## Connector_PG4.upload_to_db(store_data, "dim_store_details")
 
-# Retrieve and clean card data from pdf source:
-pdf_path = "https://data-handling-public.s3.eu-west-1.amazonaws.com/card_details.pdf"
-card_data = Extractor_RDS.retrieve_pdf_data(pdf_path)
-card_data = Cleaner.clean_card_data(card_data)
+s3_address = "s3://data-handling-public/products.csv"
+file_path = "archive_data/product_data.csv"
+product_data = Extractor_RDS.extract_from_s3(s3_address, file_path)
+product_data = Cleaner.clean_product_data(product_data)
 
-# Upload cleaned data to new database:
-Connector_PG4.upload_to_db(card_data, "dim_card_details")
+Connector_PG4.upload_to_db(product_data, "dim_products")

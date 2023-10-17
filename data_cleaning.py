@@ -49,7 +49,6 @@ class DataCleaning:
             number_lengths = dict(yaml.safe_load(file))
         # Initialise list:
         invalid_numbers = []
-
         # Create a list of series of card numbers of invalid length:
         # Create two boolean masks per iteration:
         #  - 'provider_mask' is true when the card provider matches the 
@@ -98,3 +97,152 @@ class DataCleaning:
         card_data.reset_index(inplace=True, drop=True)
         card_data.index.rename("Index", inplace=True)
         return (card_data)
+    
+    def __clean_lat_long(self, store_data):
+        """Fix latitude and longitude data in stores dataset."""
+        # Give latitude and longitude a consistent number of decimal places
+        # (four is enough for any addressing requirements):
+        store_data.longitude = store_data.longitude.round(decimals=4)
+        store_data.latitude = store_data.latitude.round(decimals=4)
+        # Remove lat and long data where invalid:
+        store_data.latitude.where((store_data.latitude < 90.0) 
+                                    &(store_data.latitude > -90.0),
+                                    None,
+                                    inplace=True)
+        store_data.longitude.where((store_data.longitude < 90.0) 
+                                    &(store_data.longitude > -90.0),
+                                    None,
+                                    inplace=True)
+        return(store_data)
+    
+    def __store_data_reformat(self, store_data):
+        """Change store data dataframe columns to appropriate data types."""
+        store_data.address = store_data.address.astype("string")
+        store_data.latitude = store_data.latitude.astype("Float64")
+        store_data.longitude = store_data.longitude.astype("Float64")
+        store_data.locality = store_data.locality.astype("string")
+        store_data.store_code = store_data.store_code.astype("string")
+        store_data.opening_date = pd.to_datetime(store_data.opening_date, format="mixed")
+        store_data.staff_numbers = store_data.staff_numbers.astype("int16")
+        store_data.store_type = store_data.store_type.astype("string")
+        store_data.country_code = store_data.country_code.astype("string")
+    
+    def clean_store_data(self, store_data):
+        """Clean store data. Some null values remain as most appropriate type."""
+        # Drop lat column as it contains mostly null values and can be replaced
+        # by latitude:
+        store_data.drop("lat", axis=1, inplace=True)
+        # Change continent datatype:
+        store_data.continent = store_data.continent.astype("string")
+        # Replace typos in continent column:
+        store_data.continent.replace(["eeEurope", "eeAmerica"],
+                                    ["Europe", "America"],
+                                    inplace=True)
+        # Remove corrupted rows in dataframe based on continents column:
+        store_data = store_data[store_data.continent.str.fullmatch("^Europe$|^America$")]        
+        # Fix staff numbers column to remove any non-digit characters:
+        store_data.staff_numbers = store_data.staff_numbers.astype("str")
+        store_data.staff_numbers = store_data.staff_numbers.str.replace("(\D)", "", 
+                                                                        regex=True)
+        # Format datatypes:
+        store_data = self.__store_data_reformat(store_data)
+        # Clean lat and long data:
+        store_data = self.__clean_lat_long(store_data)
+        # Reorder columns to put latitude and longitude next to each other:
+        store_data = store_data.iloc[:, [0,1,7,2,3,4,5,6,8,9]]
+        # Replace address data newline characters with commas:
+        store_data.address = store_data.address.str.replace("(\n)", ", ", regex=True)
+        print(store_data.head(20))
+
+    def __multipack_to_kg(self, product_data):
+        """Add column "multipack" with mulitpack items in kg as type float."""
+        product_data[["multipack_1", "multipack_2"]] = product_data.weight\
+                                                       .str.extract("^(\d+) x (\d+)")
+        product_data.multipack_1 = product_data.multipack_1.astype("float32")
+        product_data.multipack_2 = product_data.multipack_2.astype("float32")
+        product_data["multipack"] = product_data.multipack_1 * product_data.multipack_2
+        product_data.drop(["multipack_1", "multipack_2"], axis=1, inplace=True)
+        product_data.multipack = product_data.multipack\
+                                 .divide(1000)\
+                                 .fillna(value=0)
+        return(product_data)
+
+    def __oz_to_kg(self, product_data):
+        """Add column "weight_oz" with items in ounces to kg as type float."""
+        product_data["weight_oz"] = product_data.weight.str.extract("^(\d+\.?\d+)oz+$")
+        product_data.weight_oz = product_data.weight_oz\
+                                 .astype("float32")\
+                                 .divide(35.27)\
+                                 .fillna(value=0)
+        return(product_data)
+
+    def __g_ml_to_kg(self, product_data):
+        """Add Column "weight_g_ml" with items in g and ml to kg as type float."""
+        product_data["weight_g_ml"] = product_data.weight\
+                                      .str.extract("^(\d+\.?\d*)[^k]?[g|ml].*$")\
+                                      .astype("float32")\
+                                      .divide(1000)\
+                                      .fillna(value=0)
+        return(product_data)
+
+    def __format_kg(self, product_data):
+        """Reformat weight column to be compatible with column addition."""
+        product_data.weight = product_data.weight[product_data.weight.str.contains("kg")]\
+                              .str.strip("kg")\
+                              .astype("float32")
+        product_data.weight.fillna(value=0, inplace=True)
+        return(product_data)
+    
+    def __correct_homeware_situation(self, product_data):
+        """
+        Correct Toaster and Kettle weights.
+        
+        Could also change the unit before processing in 'convert_product_weights'
+        but this method accounts for all too-light errors with those products
+        rather than just incorrect unit errors.
+        """
+        product_data.product_name = product_data.product_name.astype("string")
+        product_data.weight.mask((product_data.product_name.str.contains("Toaster|Kettle"))
+                                 & (product_data.weight < 0.050),
+                                 product_data.weight * 1000,
+                                 inplace=True)
+        return(product_data)
+    
+    def __convert_product_weights(self, product_data):
+        """Convert product data weight column to kg as float values."""
+        # Change weight column dtype to string:
+        product_data.weight = product_data.weight.astype("string")
+        # Deal with multipack values:
+        product_data = self.__multipack_to_kg(product_data)
+        # Deal with values in ounces:
+        product_data = self.__oz_to_kg(product_data)
+        # Deal with values in grams or millilitres:
+        product_data = self.__g_ml_to_kg(product_data)
+        # Reformat weight column:
+        product_data = self.__format_kg(product_data)
+        # Recombine columns:
+        product_data.weight = product_data.multipack\
+                              + product_data.weight_oz\
+                              + product_data.weight_g_ml\
+                              + product_data.weight
+        # Drop obviated columns:
+        product_data.drop(["multipack", "weight_oz", "weight_g_ml"],
+                           axis=1,
+                           inplace=True)
+        # Correct kettle and toaster weight values where unreasonably small:
+        product_data = self.__correct_homeware_situation(product_data)
+        return(product_data)
+
+    def clean_product_data(self, product_data):
+        """Clean "Product_Data" DataFrame."""
+        # Return weights column in kg as float values:
+        product_data = self.__convert_product_weights(product_data)
+        # Drop rows where weight is zero - all contain only corrupt or missing data:
+        product_data = product_data[product_data.weight != 0]
+        # Drop rows with duplicate names:
+        product_data = product_data.drop_duplicates(subset="product_name")
+        # Convert object dtypes to string:
+        product_data = product_data.convert_dtypes()
+        # Convert date_added to datetime64 format:
+        product_data.date_added = pd.to_datetime(product_data.date_added, format="mixed")
+        return(product_data)
