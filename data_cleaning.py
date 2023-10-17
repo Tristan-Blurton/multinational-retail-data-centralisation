@@ -246,3 +246,14 @@ class DataCleaning:
         # Convert date_added to datetime64 format:
         product_data.date_added = pd.to_datetime(product_data.date_added, format="mixed")
         return(product_data)
+
+    def clean_order_data(self, order_data):
+        """Clean "orders_data" DataFrame."""
+        # Drop bad rows:
+        order_data.drop(["level_0", "first_name", "last_name", "1"],
+                 axis=1, inplace=True)
+        # Set index column as pandas index:
+        order_data.set_index("index", drop=True, inplace=True)
+        # Convert object to string datatypes:
+        order_data = order_data.convert_dtypes()
+        return(order_data)
