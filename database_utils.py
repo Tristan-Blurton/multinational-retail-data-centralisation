@@ -1,27 +1,57 @@
-import yaml
-import pandas as pd
 from sqlalchemy import create_engine
-
+import yaml
 
 class DatabaseConnector:
-    # A class for connecting and uploading data to a database.
+    """Contains utility methods for connecting to databases.
+    
+    Public methods:
+     - init_db_engine()
+     - upload_to_db()
+     
+     Instance variables:
+     - 'cred_dict_path' (str): the relative or absolute path 
+       to a dictionary of credentials to a database. Dictionary must
+       be in the format laid out in the file parameters/db_creds_xxx.yaml 
+       and of type yaml.
+    """
 
     def __init__(self, cred_dict_path):
-        # Initialising attributes - assignment of 'self.cred_dict' 
-        # and 'self.engine' is performed through
-        # calling subsequent methods.
+        """Class constructor.
+        
+        Uses private method '__read_db_creds()' to define attribute 
+        'cred_dict'.
+        
+        Attributes:
+         - self.cred_dict_path (str): should be passed at initialisation. 
+           See class docstring.
+         - self.cred_dict (dict): python dictionary of database credentials.
+         - self.engine (engine): sqlalchemy engine assigned when method 
+           'init_db_engine' is called.
+        """
         self.cred_dict_path = cred_dict_path
-        self.cred_dict = self.read_db_creds()
+        self.cred_dict = self.__read_db_creds()
         self.engine = None
 
-    def read_db_creds(self):
-        # Returns the file ""db_creds.yaml"" as a python dictionary.
+    def __read_db_creds(self):
+        """Returns the file ""db_creds.yaml"" as a python dictionary."""
         with open(f'{self.cred_dict_path}', 'r') as cred_file:
             cred_dict = yaml.safe_load(cred_file)
-            return cred_dict
+        return cred_dict
+        
     def init_db_engine(self):
-        # Reads a python dictionary and initialises and returns
-        # an sqlalchemy database engine.
+        """Initialise and return an sqlalchemy 'engine' object.
+        
+        Arguments: 
+         - None.
+
+        Keyword Arguments:
+         - None.
+        
+        Returns:
+         - sqlalchemy 'engine' object. 'engine' object is associated with the 
+           database whose credentials were used to initialise the class and 
+           becomes an attribute of the class.
+        """
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
         HOST = self.cred_dict["HOST"]
@@ -35,4 +65,17 @@ class DatabaseConnector:
         return engine
     
     def upload_to_db(self, df, table_name):
+        """Upload a DataFrame to the class-associated database.
+        
+        Arguments:
+         - df (DataFrame): The dataframe to be uploaded.
+         - table_name (str): The name of the table as it 
+           should appear in the new database.
+        
+        Keyword Arguments:
+         - None.
+
+        Returns:
+         - None.
+         """
         df.to_sql(f"{table_name}", self.engine)

@@ -1,19 +1,49 @@
+from sqlalchemy import inspect, text
+from tabula import read_pdf
 import boto3
 import requests
 import yaml
 import json
 import re
 import pandas as pd
-from sqlalchemy import inspect, text
-from tabula import read_pdf
-
 
 
 class DataExtractor:
-    """Extract data from a database."""
+    """Contains methods for extract data from databases.
+    
+    A seperate instance with seperate engine is required for 
+    each different database that data must be extracted from.
+    Methods that do not use the engine attribute are general
+    and can be called from any instance of the class.
+
+    Public Methods:
+     - list_db_tables(engine)
+     - read_rds_table()
+     - retrieve_pdf_data()
+     - list_number_of_stores()
+     - retrieve_stores_data(stores_number)
+     - extract_csv_from_s3(s3_address, file_path)
+     - extract_json_from_s3(web_address, file_path)
+     
+    Instance Variables:
+     - engine (sqlalchemy engine object): Initialised using the 
+       DatabaseConnector class.
+
+    Attributes:
+     - engine  (sqlalchemy engine object): as above.
+     - insp (sqlalchemy inspector object): Created during class 
+       initialisation. Used to extract information about the 
+       associated database.
+     """
     
     def __init__(self,engine):
-        """Initialise the DataExtractor Instance."""
+        """Initialise the DataExtractor Instance.
+        
+        Arguments:
+         - engine (sqlalchemy engine object): This object is initialised
+           using the DatabaseConnector class and associates the 
+           DataExtractor class with a database.
+        """
         self.engine = engine
         self.insp = inspect(self.engine)
 
@@ -23,20 +53,45 @@ class DataExtractor:
         print(tables)
     
     def read_rds_table(self, table_name):
-        """Return a specificed table as a pandas DataFrame."""
+        """Return a specificed table from an RDS database as a pandas DataFrame.
+        
+        Convenient to use in conjuction with list_db_tables.
+
+        Arguments:
+         - table_name(str): The name of a table in the associated database.
+
+        Keyword Arguments:
+         - None
+
+        Returns:
+         - data (DataFrame): A pandas DataFrame of data from 
+           the table specified.
+        """
         with self.engine.connect() as connection:
             table_data = connection.execute(text(f"SELECT * FROM {table_name}"))
-        table_df = pd.DataFrame(table_data)
-        return table_df
+        data = pd.DataFrame(table_data)
+        return data
     
-    def retrieve_pdf_data(self, pdf_path):
-        """Return a pdf as a pandas DataFrame."""
-        pdf_data = read_pdf(pdf_path, pages="all")
+    def retrieve_pdf_data(self, pdf_address):
+        """Return a pdf as a pandas DataFrame.
+        
+        Handles multiple pages of pdf data.
+        
+        Arguments:
+        - pdf_address (str): The web address of the pdf data to be extracted.
+
+        Keyword Arguments:
+        - None
+
+        Returns:
+        - data (DataFrame): A pandas DataFrame of the pdf data.
+        """
+        pdf_data = read_pdf(pdf_address, pages="all")
         data = pd.concat(pdf_data)
         return data 
 
     def __open_api_info(self):
-        """Open header and url dictionaries"""
+        """Open header and url dictionaries."""
         header_dict_path = "parameters/headers_dict.yaml"
         url_dict_path = "parameters/url_dict.yaml"
         with open(header_dict_path, "r") as file1,\
