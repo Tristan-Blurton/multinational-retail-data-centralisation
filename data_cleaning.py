@@ -52,9 +52,9 @@ class DataCleaning:
         # Create a list of series of card numbers of invalid length:
         # Create two boolean masks per iteration:
         #  - 'provider_mask' is true when the card provider matches the 
-        # loop iteration's current card number length. 
+        #     loop iteration's current card number length. 
         #  - 'incorrect_length_mask' is true when the length of the card number
-        #  does not match the iteration's current card number length.  
+        #     does not match the iteration's current card number length.  
         # Create a new series of card numbers where both these masks are true.
         # Append this series to the list of series 'invalid_numbers' each iteration.  
         for card_length in number_lengths.keys():
@@ -225,7 +225,7 @@ class DataCleaning:
                               + product_data.weight_oz\
                               + product_data.weight_g_ml\
                               + product_data.weight
-        # Drop obviated columns:
+        # Drop obselete columns:
         product_data.drop(["multipack", "weight_oz", "weight_g_ml"],
                            axis=1,
                            inplace=True)
@@ -257,3 +257,26 @@ class DataCleaning:
         # Convert object to string datatypes:
         order_data = order_data.convert_dtypes()
         return(order_data)
+    
+    def clean_events_data(self, events_data):
+        """Clean and reformat "events_data" dataframe."""
+        # Convert all datatypes to string:
+        events_data = events_data.convert_dtypes()
+        # Create new column "datetime":
+        # - Create list "digits" of single digits in string format.
+        # - When any dataframe item matches an item in the list
+        #   then the value is replaced with itself and a leading zero.
+        # - Combine the four date/time data columns into one string that 
+        #   "to_datetime()" can parse. 
+        digits = map(str, list(range(0,10)))
+        events_data = events_data.mask(events_data.isin(digits), "0" + events_data)
+        events_data = events_data[events_data.timestamp.str.match("^\d\d:\d\d:\d\d$")]
+        events_data["datetime"] = events_data.year\
+                                + events_data.month\
+                                + events_data.day\
+                                + " " + events_data.timestamp                  
+        # Format datetime column as pandas datetime(ns).
+        events_data.datetime = pd.to_datetime(events_data.datetime)
+        # Drop obselete rows:                                    
+        events_data = events_data.iloc[:, [6,4,5]]
+        return(events_data)

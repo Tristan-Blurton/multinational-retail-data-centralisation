@@ -67,7 +67,7 @@ class DataExtractor:
         store_data.set_index("index", inplace=True)
         return(store_data)
     
-    def extract_from_s3(self, s3_address, file_path):
+    def extract_csv_from_s3(self, s3_address, file_path):
         """Retrieve tabular data from s3 bucket and return as DataFrame."""
         bucket_info = re.match("^s3:\/\/(.*)\/(.*)$", s3_address)
         name = bucket_info.group(1)
@@ -77,3 +77,12 @@ class DataExtractor:
         data = pd.read_csv(file_path, index_col=[0])
         return(data)
     
+    def extract_json_from_s3(self, web_address, file_path):
+        """Retrieve tabular data from s3 bucket and return as DataFrame."""
+        bucket_info = re.match("^https:\/\/([^\.]+).*\/(.*)$", web_address)
+        name = bucket_info.group(1)
+        key = bucket_info.group(2)
+        s3 = boto3.client("s3")
+        s3.download_file(name, key, file_path)
+        data = pd.read_json(file_path)
+        return(data)
