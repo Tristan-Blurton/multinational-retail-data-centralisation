@@ -31,7 +31,7 @@ The function of the project is to collate cleaned data into a single database. T
 
 5. You're set - now use the various methods as outlined below to download, extract, clean, and reupload to your heart's content.
 ## Structure
-Currently there are three directories:
+Currently there are four directories:
  - **"project_MRDC"** is the root directory. The three main modules ("data_cleaning", "data_extraction", and "database_utils") along with "db_main"
 and a couple of development test files are stored here.
 
@@ -39,6 +39,7 @@ and a couple of development test files are stored here.
 
 - **"parameters"** contains various dictionaries of information used throughout, like database credentials, urls, and other miscellany.
 
+- **"SQL"** contains text files for the various SQL operations performed on the database once uploaded. 
 ## License
 No License - it's only for practice!
 

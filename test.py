@@ -13,5 +13,8 @@ pd.set_option("display.max_colwidth",100)
 
 Cleaner = DataCleaning()
 
-
-
+card_data = pd.read_csv("archive_data/card_data.csv")
+print(card_data[card_data.card_number == "60485138139"])
+card_data = Cleaner.clean_card_data(card_data)
+print(card_data[card_data.card_number == 60485138139])
+print(card_data.info())

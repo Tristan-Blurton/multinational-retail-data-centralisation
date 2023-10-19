@@ -76,26 +76,22 @@ class DataCleaning:
         with open("parameters/number_lengths.yaml", "r") as file:
             number_lengths = dict(yaml.safe_load(file))
         # Initialise list:
-        invalid_numbers = []
+        valid_numbers = []
         # Create a list of series of card numbers of invalid length:
         # Create two boolean masks per iteration:
         #  - 'provider_mask' is true when the card provider matches the 
         #     loop iteration's current card number length. 
-        #  - 'incorrect_length_mask' is true when the length of the card number
-        #     does not match the iteration's current card number length.  
-        # Create a new series of card numbers where both these masks are true.
-        # Append this series to the list of series 'invalid_numbers' each iteration.  
+        #  - 'correct_length_mask' is true when the length of the card number
+        #     matches the iteration's current card number length.  
+        # Create a new list of card numbers where both these masks are true.
+        # Append this list to the list 'valid_numbers' each iteration.  
         for card_length in number_lengths.keys():
             provider_mask = card_data.card_provider.isin(number_lengths[card_length])
-            incorrect_length_mask = ~card_data.card_number.str.match(f"^\d{card_length}$")                     
-            invalid_numbers.append(card_data.card_number[provider_mask & incorrect_length_mask])
+            correct_length_mask = card_data.card_number.str.match(f"^\d{card_length}$")
+            valid_numbers.extend(card_data.card_number[provider_mask & correct_length_mask])
 
-        # Concatenate the list of series into one series:
-        invalid_numbers = pd.concat(invalid_numbers)
-        # Convert the series to a python list:
-        invalid_numbers = invalid_numbers.tolist()
         # Drop rows where card numbers are invalid:
-        card_data = card_data[~card_data.card_number.isin(invalid_numbers)]
+        card_data = card_data[card_data.card_number.isin(valid_numbers)]
         return(card_data)
 
     def __card_data_reformat(self, card_data):
@@ -158,15 +154,15 @@ class DataCleaning:
     
     def __store_data_reformat(self, store_data):
         """Change store data dataframe columns to appropriate data types."""
-        store_data.address = store_data.address.astype("string")
-        store_data.latitude = store_data.latitude.astype("Float64")
-        store_data.longitude = store_data.longitude.astype("Float64")
-        store_data.locality = store_data.locality.astype("string")
-        store_data.store_code = store_data.store_code.astype("string")
-        store_data.opening_date = pd.to_datetime(store_data.opening_date, format="mixed")
-        store_data.staff_numbers = store_data.staff_numbers.astype("int16")
-        store_data.store_type = store_data.store_type.astype("string")
-        store_data.country_code = store_data.country_code.astype("string")
+        store_data = store_data.convert_dtypes()
+        store_data.opening_date = pd.to_datetime(store_data.opening_date,
+                                                 format="mixed")
+        store_data.latitude = pd.to_numeric(store_data.latitude,
+                                            errors="coerce")
+        store_data.longitude = pd.to_numeric(store_data.longitude,
+                                            errors="coerce")
+        store_data.staff_numbers = store_data.staff_numbers.astype("Int16")
+        return (store_data)
     
     def clean_store_data(self, store_data):
         """Clean store data dataframe.
@@ -185,8 +181,7 @@ class DataCleaning:
         Returns:
          - store_data (DataFrame): Cleaned dataframe of store data.
         """
-        # Drop lat column as it contains mostly null values and can be replaced
-        # by latitude:
+        #Drop lat column completely as it contains no useful data:
         store_data.drop("lat", axis=1, inplace=True)
         # Change continent datatype:
         store_data.continent = store_data.continent.astype("string")
@@ -196,10 +191,14 @@ class DataCleaning:
                                     inplace=True)
         # Remove corrupted rows in dataframe based on continents column:
         store_data = store_data[store_data.continent.str.fullmatch("^Europe$|^America$")]        
-        # Fix staff numbers column to remove any non-digit characters:
-        store_data.staff_numbers = store_data.staff_numbers.astype("str")
-        store_data.staff_numbers = store_data.staff_numbers.str.replace("(\D)", "", 
-                                                                        regex=True)
+        # Fix staff numbers column to remove any non-digit characters. 
+        # Using .loc instead of the series attribute to assign because 
+        # the 'copy of a view' error is thrown otherwise:
+        store_data.loc[:,"staff_numbers"] = store_data.staff_numbers\
+                                            .astype("string")
+        store_data.loc[:,"staff_numbers"] = store_data.staff_numbers\
+                                            .str.replace("(\D)", "", 
+                                            regex=True)
         # Format datatypes:
         store_data = self.__store_data_reformat(store_data)
         # Clean lat and long data:
@@ -208,7 +207,7 @@ class DataCleaning:
         store_data = store_data.iloc[:, [0,1,7,2,3,4,5,6,8,9]]
         # Replace address data newline characters with commas:
         store_data.address = store_data.address.str.replace("(\n)", ", ", regex=True)
-        print(store_data.head(20))
+        return(store_data)
 
     def __multipack_to_kg(self, product_data):
         """Add column "multipack" with mulitpack items in kg as type float."""
