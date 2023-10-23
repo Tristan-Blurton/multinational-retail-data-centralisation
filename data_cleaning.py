@@ -65,9 +65,9 @@ class DataCleaning:
         user_data = user_data[(user_data.date_of_birth + min_user_age < now) 
                               | (user_data.date_of_birth + max_user_age > now)]
         # Filtering out rows where 'join_date' is in the future or 'join_date' 
-        # is earlier than 'date_of_birth'.
-        user_data = user_data[(user_data.join_date < now)
-                              & (user_data.join_date > user_data.date_of_birth)]
+        # is earlier than 'date_of_birth'. Not currently in use. 
+        #user_data = user_data[(user_data.join_date < now)
+        #                      & (user_data.join_date > user_data.date_of_birth)]
         return user_data
     
     def __card_number_length_check(self, card_data):
@@ -122,12 +122,16 @@ class DataCleaning:
          - card_data (DataFrame): Cleaned dataframe of card data.
         """
         # Drop rows with null values:
-        card_data.dropna(inplace=True)
-        # Remove rows where the card number has any non-digit character:
-        card_data.card_number = card_data.card_number.astype("string")
+        card_data = card_data.dropna()
+        # Change datatype to string for easier manipulation:
+        card_data.loc[:, "card_number"] = card_data.card_number.astype("string")
+        # Strip invalid characters from beginning and end:
+        card_data.loc[:, "card_number"] = card_data.card_number.str.strip("? ")
+        # Drop rows where card number have other invalid characters:
         card_data = card_data[card_data.card_number.str.match("^\d+$")] 
-        # Drop rows with invalid card number lengths:
-        card_data = self.__card_number_length_check(card_data)
+        # Drop rows with invalid card number lengths (Currently not in
+        # use due to the realities of the practical exercise):
+        ## card_data = self.__card_number_length_check(card_data)
         # Change columns to appropriate data types:
         card_data = self.__card_data_reformat(card_data)
         # Correct index:
@@ -308,8 +312,6 @@ class DataCleaning:
         product_data = self.__convert_product_weights(product_data)
         # Drop rows where weight is zero - all contain only corrupt or missing data:
         product_data = product_data[product_data.weight != 0]
-        # Drop rows with duplicate names:
-        product_data = product_data.drop_duplicates(subset="product_name")
         # Convert object dtypes to string:
         product_data = product_data.convert_dtypes()
         # Convert date_added to datetime64 format:
