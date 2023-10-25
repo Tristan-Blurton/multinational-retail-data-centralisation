@@ -1,3 +1,5 @@
+Format datatypes for orders table:
+----------------------------------
 ALTER TABLE orders_table
 	ALTER COLUMN date_uuid TYPE UUID USING date_uuid::UUID,
 	ALTER COLUMN user_uuid TYPE UUID USING user_uuid::UUID,
@@ -6,6 +8,8 @@ ALTER TABLE orders_table
 	ALTER COLUMN product_code TYPE VARCHAR(11),
 	ALTER COLUMN product_quantity TYPE SMALLINT;
 
+Format datatypes for users table:
+----------------------------------
 ALTER TABLE dim_users
 	ALTER COLUMN first_name TYPE VARCHAR(255),
 	ALTER COLUMN last_name TYPE VARCHAR(255),
@@ -13,7 +17,9 @@ ALTER TABLE dim_users
 	ALTER COLUMN country_code TYPE VARCHAR(2),
 	ALTER COLUMN user_uuid TYPE UUID using user_uuid::UUID,
 	ALTER COLUMN join_date TYPE DATE;
-	
+
+Format datatypes for stores table:
+----------------------------------
 ALTER TABLE dim_store_details
 	ALTER COLUMN longitude TYPE FLOAT,
 	ALTER COLUMN latitude TYPE FLOAT,
@@ -22,9 +28,13 @@ ALTER TABLE dim_store_details
 	ALTER COLUMN country_code TYPE VARCHAR(2),
 	ALTER COLUMN continent TYPE VARCHAR(255);
 
+Remove pound sign from price column:
+------------------------------------
 UPDATE dim_products
 SET product_price = (SELECT TRIM('£' FROM product_price));
 
+Create weight class column:
+---------------------------
 ALTER TABLE dim_products
 ADD COLUMN weight_class VARCHAR(14);
 
@@ -39,10 +49,13 @@ SET weight_class = (CASE
 						WHEN weight >= 140 
 							THEN 'Truck_Required'
 						END);
-						
+
+Add notnull constraint to new weight class column:
+--------------------------------------------------
 ALTER TABLE dim_products
 ALTER COLUMN weight_class SET NOT NULL;
 
+Rename removed column and convert to type boolean:
 ALTER TABLE dim_products
 RENAME COLUMN removed TO still_available;
 
@@ -52,6 +65,8 @@ SET still_available = (CASE WHEN still_available = 'Still_available'
 			    ELSE 0
 			    END);
 
+Format datatypes for products table:
+------------------------------------
 ALTER TABLE dim_products
 	ALTER COLUMN product_price TYPE FLOAT USING product_price::double precision,
 	ALTER COLUMN weight TYPE FLOAT,
@@ -61,16 +76,22 @@ ALTER TABLE dim_products
 	ALTER COLUMN uuid TYPE UUID USING uuid::UUID,
 	ALTER COLUMN still_available TYPE BOOL USING still_available::boolean;
 
+Format datatypes for datetimes table:
+----------------------------------
 ALTER TABLE dim_datetimes
 	ALTER COLUMN datetime TYPE DATE,
 	ALTER COLUMN time_period TYPE VARCHAR(10),
 	ALTER COLUMN date_uuid TYPE UUID USING date_uuid::UUID;
 	
+Format datatypes for card details table:
+----------------------------------------
 ALTER TABLE dim_card_details
 	ALTER COLUMN card_number TYPE VARCHAR(19),
 	ALTER COLUMN expiry_date TYPE DATE,
 	ALTER COLUMN date_payment_confirmed TYPE DATE;
-	
+
+Add primary key constraints to branch tables:
+---------------------------------------------
 ALTER TABLE dim_card_details
 ADD CONSTRAINT pk_card_details
 PRIMARY KEY (card_number);
@@ -91,6 +112,8 @@ ALTER TABLE dim_users
 ADD CONSTRAINT pk_users
 PRIMARY KEY (user_uuid);
 
+Add foreign key constraints to core table:
+------------------------------------------
 ALTER TABLE orders_table
 ADD CONSTRAINT fk_card_details
 	FOREIGN KEY (card_number)
@@ -107,7 +130,3 @@ ADD CONSTRAINT fk_stores
 ADD CONSTRAINT fk_users
 	FOREIGN KEY (user_uuid)
 	REFERENCES dim_users(user_uuid);
-	
-
-
-	

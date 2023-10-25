@@ -1,0 +1,266 @@
+Informational Database Queries
+----------------------------------------------------------------------------
+1. How many stores does the business have and in which countries?
+
+        Query:
+            SELECT country_code,
+            COUNT(country_code) AS total_no_stores
+            FROM dim_store_details
+            GROUP BY country_code
+            ORDER BY total_no_stores DESC
+
+        Response:
+
+            "country_code"	"total_no_stores"
+            ---------------------------------
+            "GB"	            266
+            "DE"	            141
+            "US"	            34
+
+2. Which locations currently have the most stores?
+
+        Query:
+            SELECT locality,
+            COUNT(locality) AS total_no_stores
+            FROM dim_store_details
+            GROUP BY locality
+            ORDER BY total_no_stores DESC
+            LIMIT 10
+
+        Response:
+
+            "locality"	"total_no_stores"
+            -----------------------------
+            "Chapletown"	    14
+            "Belper"	        13
+            "Bushey"	        12
+            "Exeter"	        11
+            "High Wycombe"	    10
+            "Rutherglen"	    10
+            "Arbroath"	        10
+            "Surbiton"	        9
+            "Lancing"	        9
+            "Aberdeen"	        9
+
+3. Which months produce the average highest cost of sales typically?
+
+        Query:
+            WITH months
+            AS (
+            SELECT date_part('month', datetime) AS "month",
+                date_uuid
+            FROM dim_datetimes
+            ),
+
+            order_amounts
+            AS (
+            SELECT product_price * product_quantity AS order_total,
+                months.date_uuid
+            FROM dim_products
+            JOIN orders_table ON dim_products.product_code = orders_table.product_code
+            JOIN months ON orders_table.date_uuid = months.date_uuid
+            )
+
+            SELECT 
+                ROUND(CAST(SUM(order_total) AS NUMERIC), 2) AS total_cost_of_orders,
+                "month"
+            FROM months
+            JOIN order_amounts ON months.date_uuid = order_amounts.date_uuid 
+            GROUP BY "month"
+            ORDER BY total_cost_of_orders DESC
+            LIMIT 6
+
+        Response:
+
+            "total_cost_of_orders"	"month"
+            -------------------------------
+                673295.68	           8
+                668041.45	           1
+                657335.84	           10
+                650321.43              5
+                645741.70	           7
+                645463.00	           3
+
+4. How many sales are coming from online?
+
+        Query:
+            WITH location_data
+            AS(
+            SELECT 
+                store_code,
+                CASE
+                    WHEN store_type = 'Web Portal'
+                        THEN 'Web'
+                    ELSE 'Offline'
+                    END AS "location"
+            FROM dim_store_details
+            )
+
+            SELECT 
+                COUNT(date_uuid) AS number_of_sales,
+                SUM(product_quantity) AS product_quantity_count,
+                "location"
+            FROM orders_table
+            JOIN location_data ON location_data.store_code = orders_table.store_code
+            GROUP BY "location"
+            ORDER BY number_of_sales
+
+        Response:
+
+            "number_of_sales"	"product_quantity_count"	"location"
+            ----------------------------------------------------------
+                26957	                  107739               "Web"
+                93166	                  374047	         "Offline"
+        
+5. What percentage of sales come through each type of store?
+
+        Query:
+            WITH overall_sales
+            AS(
+            SELECT 
+                SUM(product_quantity * product_price) AS overall_total
+            FROM orders_table
+            JOIN dim_products ON dim_products.product_code = orders_table.product_code
+            ),
+
+            aggregates
+            AS(
+            SELECT
+                store_type,
+                ROUND(CAST(SUM(product_quantity * product_price) AS NUMERIC), 2) AS total_sales
+            FROM orders_table
+            JOIN dim_products ON dim_products.product_code = orders_table.product_code
+            JOIN dim_store_details ON dim_store_details. store_code = orders_table.store_code
+            GROUP BY store_type
+            )
+
+            SELECT
+                store_type,
+                total_sales,
+                ROUND(CAST(total_sales / overall_total * 100 AS NUMERIC), 2) AS "percentage_total(%)"
+            FROM aggregates
+            JOIN overall_sales on aggregates = aggregates
+            ORDER BY "percentage_total(%)" DESC
+
+        Response:
+
+            "store_type"	"total_sales"	"percentage_total(%)"
+            -----------------------------------------------------
+            "Local"	         3440896.52	            44.56
+            "Web Portal"	 1726547.05	            22.36
+            "Super Store"	 1224293.65	            15.85
+            "Mall Kiosk"	  698791.61	             9.05
+            "Outlet"	      631804.81	             8.18
+
+6. Which month in each year produced the highest cost of sales?
+
+        Query:
+            WITH dates
+            AS (
+                SELECT
+                    date_part('year', datetime) AS "year",
+                    date_part('month', datetime) AS "month",
+                    date_uuid
+                FROM dim_datetimes
+            )
+
+            SELECT 
+                ROUND(CAST(SUM(product_quantity * product_price) AS NUMERIC), 2) AS total_sales,
+                "year",
+                "month"
+            FROM orders_table
+            JOIN dim_products ON orders_table.product_code = dim_products.product_code
+            JOIN dates ON orders_table.date_uuid = dates.date_uuid
+            GROUP BY "year", "month"
+            ORDER BY total_sales DESC
+            LIMIT 10
+
+        Response:
+
+            "total_sales"	"year"	"month"
+            -------------------------------
+             27936.77	     1994	    3
+             27356.14	     2019	    1
+             27091.67	     2009	    8
+             26679.98	     1997	   11
+             26310.97	     2018	   12
+             26277.72	     2019	    8
+             26236.67	     2017	    9
+             25798.12	     2010	    5
+             25648.29	     1996	    8
+             25614.54	     2000	    1
+
+7. What is the staff headcount?
+
+        Query:
+            SELECT 
+                SUM(staff_numbers) AS total_staff_numbers,
+                country_code
+            FROM dim_store_details
+            GROUP BY country_code
+            ORDER BY total_staff_numbers DESC
+
+        Response:
+            "total_staff_numbers"	"country_code"
+            --------------------------------------
+                13307	                "GB"
+                6123	                "DE"
+                1384	                "US"
+
+8. Which German store type is selling the most?
+
+        Query:
+            SELECT 
+                ROUND(CAST(SUM(product_quantity * product_price) AS NUMERIC), 2) AS total_sales,
+                store_type,
+                country_code
+            FROM orders_table
+            JOIN dim_store_details ON orders_table.store_code = dim_store_details.store_code
+            JOIN dim_products ON orders_table.product_code = dim_products.product_code
+            WHERE country_code = 'DE'
+            GROUP BY store_type, country_code
+            ORDER BY total_sales DESC
+
+        Response:
+
+            "total_sales"	"store_type"	"country_code"
+            ----------------------------------------------
+             1109909.59	    "Local"	            "DE"
+             384625.03	    "Super Store"	    "DE"
+             247634.20	    "Mall Kiosk"	    "DE"
+             198373.57	    "Outlet"	        "DE"
+
+9. How quickly is the company making sales?
+
+        Query:
+            WITH intervals
+            AS(
+            SELECT
+                date_uuid,
+                LEAD(datetime) OVER(ORDER BY datetime) - datetime AS actual_time_taken,
+                date_part('year', datetime) as "year"
+            FROM dim_datetimes
+            )
+
+            SELECT 
+                "year",
+                AVG(actual_time_taken) as actual_time_taken
+            FROM intervals
+            GROUP BY "year"
+            ORDER BY actual_time_taken
+
+        Response:
+           "year"   "actual time taken"
+            2013	"02:17:15.655442"
+            1993	"02:15:40.129515"
+            2002	"02:13:49.478228"
+            2008	"02:13:03.532442"
+            2022	"02:13:02.003698"
+            1995	"02:12:59.084514"
+            2016	"02:12:58.099167"
+            2011	"02:12:29.826536"
+            2020	"02:12:10.518667"
+            2021	"02:11:48.370733"
+        
+        Note: There are small differences here with the data on the task but I believe the 
+              method is sound.

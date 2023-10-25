@@ -5,9 +5,8 @@ class DatabaseConnector:
     """Contains utility methods for connecting to databases.
     
     Public methods:
-     - init_db_engine()
      - upload_to_db()
-     
+
      Instance variables:
      - 'cred_dict_path' (str): the relative or absolute path 
        to a dictionary of credentials to a database. Dictionary must
@@ -19,7 +18,9 @@ class DatabaseConnector:
         """Class constructor.
         
         Uses private method '__read_db_creds()' to define attribute 
-        'cred_dict'.
+        'cred_dict'. Subsequently uses this attribute to initialise an 
+        sqlalchemy engine linking it to the database specified in the 
+        credentials file.
         
         Attributes:
          - self.cred_dict_path (str): should be passed at initialisation. 
@@ -30,7 +31,7 @@ class DatabaseConnector:
         """
         self.cred_dict_path = cred_dict_path
         self.cred_dict = self.__read_db_creds()
-        self.engine = None
+        self.engine = self.__init_db_engine()
 
     def __read_db_creds(self):
         """Returns the file ""db_creds.yaml"" as a python dictionary."""
@@ -38,7 +39,7 @@ class DatabaseConnector:
             cred_dict = yaml.safe_load(cred_file)
         return cred_dict
         
-    def init_db_engine(self):
+    def __init_db_engine(self):
         """Initialise and return an sqlalchemy 'engine' object.
         
         Arguments: 

@@ -88,10 +88,11 @@ class DataExtractor:
         """
         pdf_data = read_pdf(pdf_address, pages="all")
         data = pd.concat(pdf_data)
-        return data 
+        return(data) 
 
     def __open_api_info(self):
         """Open header and url dictionaries."""
+
         header_dict_path = "parameters/headers_dict.yaml"
         url_dict_path = "parameters/url_dict.yaml"
         with open(header_dict_path, "r") as file1,\
@@ -101,15 +102,41 @@ class DataExtractor:
         return(header_dict, url_dict)
 
     def list_number_of_stores(self):
-        """List the number of stores in the business."""
+        """List the number of stores in the business.
+        
+        Arguments:
+        - None
+        
+        Keyword Arguments:
+        - None
+        
+        Returns:
+        - number_stores (int): The number of stores stored at 
+        the location provided.
+        """
         header_dict, url_dict = self.__open_api_info()
         number_stores = requests.get(url_dict["number-stores"],
                                      headers=header_dict)
         number_stores = eval(number_stores.text)
-        return(number_stores["number_stores"])
+        print(number_stores["number_stores"])
     
     def retrieve_stores_data(self, store_number):
-        """Retrieve dataframe of information on stores."""
+        """Retrieve dataframe of information on stores.
+        
+        Variable execution time depeneding on number of stores retrieved.
+
+        Arguments:
+        - store_number (int): The number of stores to retrieve data on.
+        The maximum value of this integer can be found by calling 
+        "list_number_of_stores".
+        
+        Keyword Arguments:
+        - None
+        
+        Returns:
+        - store_data (DataFrame): a pandas dataframe of the collated 
+        store data."""
+
         store_data = []
         header_dict, url_dict = self.__open_api_info()
         for num in range(store_number):
@@ -123,7 +150,22 @@ class DataExtractor:
         return(store_data)
     
     def extract_csv_from_s3(self, s3_address, file_path):
-        """Retrieve tabular data from s3 bucket and return as DataFrame."""
+        """Retrieve csv data from s3 bucket and return as DataFrame.
+        
+        Must be called with an s3 address that contains csv data only.
+
+        Arguments: 
+        - s3_address (str): The s3 address of the bucket for information
+        to be retrieved from.
+        - file_path (str): a directory for the downloaded file to be saved
+        to. 
+        Keyword Arguments:
+        - None
+        
+        Returns: 
+        - data (DataFrame): A pandas dataframe of csv data. Also saves
+         a csv to file. 
+        """
         bucket_info = re.match("^s3:\/\/(.*)\/(.*)$", s3_address)
         name = bucket_info.group(1)
         key = bucket_info.group(2)
@@ -133,7 +175,22 @@ class DataExtractor:
         return(data)
     
     def extract_json_from_s3(self, web_address, file_path):
-        """Retrieve tabular data from s3 bucket and return as DataFrame."""
+        """Retrieve json data from s3 bucket and return as DataFrame.
+        
+        Must be called with a web address that contains csv data only.
+
+        Arguments: 
+        - web_address (str): The web address of the s3 bucket with information
+        to be retrieved from.
+        - file_path (str): a directory for the downloaded file to be saved
+        to. 
+        Keyword Arguments:
+        - None
+        
+        Returns: 
+        - data (DataFrame): A pandas dataframe of the json data. Also saves
+         a json to file. 
+        """
         bucket_info = re.match("^https:\/\/([^\.]+).*\/(.*)$", web_address)
         name = bucket_info.group(1)
         key = bucket_info.group(2)
