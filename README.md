@@ -52,6 +52,6 @@ and a couple of development test files are stored here.
 
 - **"SQL"** contains text files for the various SQL operations performed on the database once uploaded.
 ## Notes
-There are some instances in which functions were created to remove nonsensical data which turned out to be correct, such as removing card numbers which did not have the correct number of digits for their type. Sadly these tended to be the more interesting ones to create so I have left them commented in.
+There are some instances in which functions were created to remove nonsensical data which turned out to be correct, such as removing card numbers which did not have the correct number of digits for their type. Sadly these tended to be the more interesting functions to create so I have left them commented in.
 ## License
 No License - it's only for practice!
