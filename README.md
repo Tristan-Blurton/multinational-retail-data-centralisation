@@ -11,7 +11,7 @@
 - **License**
 ## Overview
 ### Function
-This project extracts, cleans, and collates data from multiple sources into a single PGAdmin4 relational database.
+This project extracts, cleans, and collates data from multiple sources into a single Postgres relational database.
 ### Purpose
 The project is a practice exercise in skills applicable to data handling in a commercial enviroment. Upon completion I will have a firm grip of the fundamentals of data manipulation and database management.
 ### Takeaways
